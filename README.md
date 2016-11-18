@@ -39,6 +39,9 @@ Introduction all API.
           *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
           *          Video: mp4, mkv, wmv, flv, ts, avi ...
           *
+          *  Notice: this function read max 12 seconds from "startSeconds of input file" and only recognize once.
+          *
+          *
           *  @param filePath query file path
           *  @param startSeconds skip (startSeconds) seconds from from the beginning of (filePath)
           *  
@@ -52,6 +55,8 @@ Introduction all API.
          *  recognize by buffer of (Audio/Video file)
          *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
          *          Video: mp4, mkv, wmv, flv, ts, avi ...
+
+         *  Notice: this function read max 12 seconds from "startSeconds of input file" and only recognize once.
          *
          *  @param fileBuffer query buffer
          *  @param startSeconds skip (startSeconds) seconds from from the beginning of fileBuffer
@@ -88,11 +93,19 @@ run Test: php test.php test.mp3
     );
 
     // recognize by file path, and skip 0 seconds from from the beginning of sys.argv[1].
+    // Notice: this function read max 12 seconds from "startSeconds of input file" and only recognize once.
     $re = new ACRCloudRecognizer($config);
     print $re->recognizeByFile($argv[1], 0);
 
-    //recognize by file_audio_buffer that read from file path, and skip 0 seconds from from the beginning of sys.argv[1].
+    // recognize by file_audio_buffer that read from file path, and skip 0 seconds from from the beginning of sys.argv[1].
+    // Notice: this function read max 12 seconds from "startSeconds of input file" and only recognize once.
     $content = file_get_contents($argv[1]);
     print $re->recognizeByFileBuffer($content, 0);
+
+    // If you scan a audio file
+    $file_duration_ms = ACRCloudExtrTool.getDurationFromFile($argv[1])
+    for ($startSeconds=0; $startSeconds<$file_duration_ms/1000; $startSeconds=$startSeconds+12) {
+        print $re->recognizeByFile($argv[1], $startSeconds);
+    }
 ?>
 ```
