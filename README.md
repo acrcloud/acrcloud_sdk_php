@@ -102,7 +102,7 @@ run Test: php test.php test.mp3
     $content = file_get_contents($argv[1]);
     print $re->recognizeByFileBuffer($content, 0);
 
-    // If you scan a audio file
+    // If need scan a audio file, you can refer to this code.
     $file_duration_ms = ACRCloudExtrTool.getDurationFromFile($argv[1])
     for ($startSeconds=0; $startSeconds<$file_duration_ms/1000; $startSeconds=$startSeconds+12) {
         print $re->recognizeByFile($argv[1], $startSeconds);
