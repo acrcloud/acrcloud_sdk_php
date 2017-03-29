@@ -11,12 +11,18 @@
  *  
 */
 namespace ACRCloud {
+    class ACRCloudRecognizeType {
+        const ACR_OPT_REC_AUDIO = 0;  # audio fingerprint
+        const ACR_OPT_REC_HUMMING = 1; # humming fingerprint
+        const ACR_OPT_REC_BOTH = 2; # audio and humming fingerprint
+    }
+
     class ACRCloudRecognizer {
         private $host = "";
         private $access_key = "";
         private $access_secret = "";
         private $timeout = 5; // s
-        private $recognizer_audio_len = 12; // seconds
+        private $recognize_type = ACRCloudRecognizeType::ACR_OPT_REC_AUDIO;
 
         function __construct($config) {
             if (array_key_exists('host', $config)) {
@@ -31,8 +37,11 @@ namespace ACRCloud {
             if (array_key_exists('timeout', $config)) {
                 $this->timeout = $config['timeout'];
             }
-            if (array_key_exists('recognizer_audio_len', $config)) {
-                $this->recognizer_audio_len = $config['recognizer_audio_len'];
+            if (array_key_exists('recognize_type', $config)) {
+                $this->recognize_type = $config['recognize_type'];
+                if ($this->recognize_type > 2) {
+                    $recognize_type = ACRCloudRecognizeType::ACR_OPT_REC_AUDIO;
+                }
             }
         }
 
@@ -42,25 +51,27 @@ namespace ACRCloud {
           *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
           *          Video: mp4, mkv, wmv, flv, ts, avi ...
           *
-          *  @param filePath query file path
-          *  @param startSeconds skip (startSeconds) seconds from from the beginning of (filePath)
+          *  @param file_path query file path
+          *  @param start_seconds skip (start_seconds) seconds from from the beginning of (file_path)
+          *  @param recognizer_audio_len_seconds use recognizer_audio_len_seconds audio data to recognize
           *  
           *  @return result metainfos https://docs.acrcloud.com/metadata
           *
           **/
-        public function recognizeByFile($filePath, $startSeconds) {
-	    if(!file_exists($filePath)) {
-                return '';
-            }
-
-            $fingerprint = ACRCloudExtrTool::createFingerprintByFile($filePath, $startSeconds, $this->recognizer_audio_len, false);
-            if ($fingerprint == false) {
+        public function recognizeByFile($file_path, $start_seconds, $recognizer_audio_len_seconds = 10) {
+	    if(!file_exists($file_path)) {
                 return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$GEN_FP_ERROR);
             }
-            if ($fingerprint == null) {
-                return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$NO_RESULT);
+
+            $query_data = array();
+            if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_AUDIO || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
+                $query_data['sample'] = ACRCloudExtrTool::createFingerprintByFile($file_path, $start_seconds, $recognizer_audio_len_seconds, False);
             }
-            return $this->doRecognize($fingerprint);
+            if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_HUMMING || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
+                $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprintByFile($file_path, $start_seconds, $recognizer_audio_len_seconds);
+            }
+
+            return $this->doRecognize($query_data);
         }
 
        /**
@@ -69,41 +80,47 @@ namespace ACRCloud {
          *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
          *          Video: mp4, mkv, wmv, flv, ts, avi ...
          *
-         *  @param fileBuffer query buffer
-         *  @param startSeconds skip (startSeconds) seconds from from the beginning of fileBuffer
+         *  @param file_buffer query buffer
+         *  @param start_seconds skip (start_seconds) seconds from from the beginning of file_buffer
+         *  @param recognizer_audio_len_seconds use recognizer_audio_len_seconds audio data to recognize
          *  
          *  @return result metainfos https://docs.acrcloud.com/metadata
          *
          **/
-         public function recognizeByFileBuffer($fileBuffer, $startSeconds) {
-            $fingerprint = ACRCloudExtrTool::createFingerprintByFileBuffer($fileBuffer, $startSeconds, $this->recognizer_audio_len, false);
-            if ($fingerprint == false) {
-                return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$GEN_FP_ERROR);
+         public function recognizeByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len_seconds = 10) {
+            $query_data = array();
+            if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_AUDIO || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
+                $query_data['sample'] = ACRCloudExtrTool::createFingerprintByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len_seconds, false);
             }
-            if ($fingerprint == null) {
-                return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$NO_RESULT);
+            if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_HUMMING || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
+                $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprintByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len_seconds);
             }
-            return $this->doRecognize($fingerprint);
+
+            return $this->doRecognize($query_data);
         }
 
         /**
           *
           *  recognize by wav audio buffer(RIFF (little-endian) data, WAVE audio, Microsoft PCM, 16 bit, mono 8000 Hz) 
           *
-          *  @param wavAudioBuffer query audio buffer
+          *  @param pcm_audio_buffer query audio buffer
           *  
           *  @return result metainfos https://docs.acrcloud.com/metadata
           *
           **/
-        public function recognize($wavAudioBuffer) {
-            $fingerprint = ACRCloudExtrTool::createFingerprint($wavAudioBuffer, false);
-            if ($fingerprint == null) {
-                return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$NO_RESULT);
+        public function recognize($pcm_audio_buffer) {
+            $query_data = array();
+            if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_AUDIO || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
+                $query_data['sample'] = ACRCloudExtrTool::createFingerprint($pcm_audio_buffer, false);
             }
-            return $this->doRecognize($fingerprint);
+            if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_HUMMING || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
+                $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprint($pcm_audio_buffer);
+            }
+
+            return $this->doRecognize($query_data);
         }
 
-        private function doRecognize($audio_fingerprint) {
+        private function doRecognize($query_data) {
             $http_method = "POST";
             $http_uri = "/v1/identify";
             $data_type = "fingerprint";
@@ -119,14 +136,34 @@ namespace ACRCloud {
                 $signature = hash_hmac("sha1", $string_to_sign, $this->access_secret, true);
                 $signature = base64_encode($signature);
                 $post_arrays = array(
-                    "sample" => $audio_fingerprint,
-                    "sample_bytes"=>strlen($audio_fingerprint),
                     "access_key"=>$this->access_key, 
                     "data_type"=>$data_type, 
                     "signature"=>$signature, 
                     "signature_version"=>$signature_version, 
                     "timestamp"=>$timestamp
                 );
+                $sample_bytes = 0;
+                $sample_hum_bytes = 0;
+                if (array_key_exists('sample', $query_data)) {
+                    if ($query_data["sample"] == false) {
+                        return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$GEN_FP_ERROR);
+                    }
+                    $post_arrays["sample"] = $query_data["sample"];
+                    $sample_bytes = strlen($query_data["sample"]);
+                    $post_arrays["sample_bytes"] = $sample_bytes;
+                }
+                if (array_key_exists('sample_hum', $query_data)) {
+                    if ($query_data["sample_hum"] == false) {
+                        return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$GEN_FP_ERROR);
+                    }
+                    $post_arrays["sample_hum"] = $query_data["sample_hum"];
+                    $sample_hum_bytes = strlen($query_data["sample_hum"]);
+                    $post_arrays["sample_hum_bytes"] = $sample_bytes;
+                }
+                if ($sample_bytes == 0 && $sample_hum_bytes == 0) {
+                    return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$NO_RESULT);
+                }
+
                 $ch = curl_init();
                 curl_setopt($ch, CURLOPT_URL, $requrl);
                 curl_setopt($ch, CURLOPT_TIMEOUT, $this->timeout);
@@ -136,6 +173,14 @@ namespace ACRCloud {
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 $result = curl_exec($ch);
                 curl_close($ch);
+
+                try {
+                    if (!json_decode($result)) {
+                        return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$JSON_ERROR);
+                    }
+                } catch (Exception $e) {
+                    return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$JSON_ERROR);
+                }
             } catch (Exception $e) {
                 $result = ACRCloudExceptionCode::getCodeResultMsg(ACRCloudExceptionCode::$HTTP_ERROR, $e->getMessage());
             }
@@ -176,14 +221,28 @@ namespace ACRCloud {
           *
           *  create "ACRCloud Fingerprint" by wav audio buffer(RIFF (little-endian) data, WAVE audio, Microsoft PCM, 16 bit, mono 8000 Hz) 
           *
-          *  @param pcmBuffer query audio buffer
-          *  @param isDB   If it is True, it will create db frigerprint; 
+          *  @param pcm_buffer query audio buffer
+          *  @param is_db   If it is True, it will create db frigerprint; 
           *  
           *  @return result "ACRCloud Fingerprint"
           *
           **/
-        public static function createFingerprint($pcmBuffer, $isDB) {
-            return acrcloud_create_fingerprint($pcmBuffer, $isDB);
+        public static function createFingerprint($pcm_buffer, $is_db) {
+            return acrcloud_create_fingerprint($pcm_buffer, $is_db);
+        }
+
+        /**
+          *
+          *  create "ACRCloud Humming Fingerprint" by wav audio buffer(RIFF (little-endian) data, WAVE audio, Microsoft PCM, 16 bit, mono 8000 Hz) 
+          *
+          *  @param pcm_buffer query audio buffer
+          *  @param is_db   If it is True, it will create db frigerprint; 
+          *  
+          *  @return result "ACRCloud Humming Fingerprint"
+          *
+          **/
+        public static function createHummingFingerprint($pcm_buffer) {
+            return acrcloud_create_humming_fingerprint($pcm_buffer);
         }
 
         /**
@@ -192,19 +251,39 @@ namespace ACRCloud {
           *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
           *          Video: mp4, mkv, wmv, flv, ts, avi ...
           *
-          *  @param filePath query file path
-          *  @param startTimeSeconds skip (startSeconds) seconds from from the beginning of (filePath)
-          *  @param audioLenSeconds Length of audio data you need. if you create recogize frigerprint, default is 12 seconds, if you create db frigerprint, it is not usefully; 
-          *  @param isDB   If it is True, it will create db frigerprint; 
+          *  @param file_path query file path
+          *  @param start_seconds skip (start_seconds) seconds from from the beginning of (file_path)
+          *  @param audio_len_seconds Length of audio data you need. if you create recogize frigerprint, default is 12 seconds, if you create db frigerprint, it is not usefully; 
+          *  @param is_db   If it is True, it will create db frigerprint; 
           *  
           *  @return result "ACRCloud Fingerprint"
           *     null: can not create fingerprint, maybe mute.
-          *     false: can decode audio from $filePath.
+          *     false: can decode audio from $file_path.
           *     throw Exception: other error, or params error.
           *
           **/
-        public static function createFingerprintByFile($filePath, $startTimeSeconds, $audioLenSeconds, $isDB) {
-            return acrcloud_create_fingerprint_by_file($filePath, $startTimeSeconds, $audioLenSeconds, $isDB);
+        public static function createFingerprintByFile($file_path, $start_seconds, $audio_len_seconds, $is_db) {
+            return acrcloud_create_fingerprint_by_file($file_path, $start_seconds, $audio_len_seconds, $is_db);
+        }
+
+        /**
+          *
+          *  create "ACRCloud Humming Fingerprint" by file path of (Audio/Video file)
+          *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
+          *          Video: mp4, mkv, wmv, flv, ts, avi ...
+          *
+          *  @param file_path query file path
+          *  @param start_seconds skip (start_seconds) seconds from from the beginning of (file_path)
+          *  @param audio_len_seconds Length of audio data you need. if you create recogize frigerprint, default is 12 seconds, if you create db frigerprint, it is not usefully; 
+          *  
+          *  @return result "ACRCloud Humming Fingerprint"
+          *     null: can not create fingerprint, maybe mute.
+          *     false: can decode audio from $file_path.
+          *     throw Exception: other error, or params error.
+          *
+          **/
+        public static function createHummingFingerprintByFile($file_path, $start_seconds, $audio_len_seconds) {
+            return acrcloud_create_humming_fingerprint_by_file($file_path, $start_seconds, $audio_len_seconds);
         }
 
         /**
@@ -213,20 +292,42 @@ namespace ACRCloud {
           *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
           *          Video: mp4, mkv, wmv, flv, ts, avi ...
           *
-          *  @param fileBuffer data buffer of input file
-          *  @param fileBufferLen  length of fileBuffer
-          *  @param startTimeSeconds skip (startSeconds) seconds from from the beginning of (filePath)
-          *  @param audioLenSeconds Length of audio data you need. if you create recogize frigerprint, default is 12 seconds, if you create db frigerprint, it is not usefully; 
-          *  @param isDB   If it is True, it will create db frigerprint; 
+          *  @param file_buffer data buffer of input file
+          *  @param file_bufferLen  length of file_buffer
+          *  @param start_seconds skip (start_seconds) seconds from from the beginning of (file_path)
+          *  @param audio_len_seconds Length of audio data you need. if you create recogize frigerprint, default is 12 seconds, if you create db frigerprint, it is not usefully; 
+          *  @param is_db   If it is True, it will create db frigerprint; 
           *  
           *  @return result "ACRCloud Fingerprint"
           *     null: can not create fingerprint
-          *     false: can decode audio from $filePath.
+          *     false: can decode audio from $file_path.
           *     throw Exception: other error, or params error.
           *
           **/
-        public static function createFingerprintByFileBuffer($fileBuffer, $startTimeSeconds, $audioLenSeconds, $isDB) {
-            return acrcloud_create_fingerprint_by_filebuffer($fileBuffer, $startTimeSeconds, $audioLenSeconds, $isDB);
+        public static function createFingerprintByFileBuffer($file_buffer, $start_seconds, $audio_len_seconds, $is_db) {
+            return acrcloud_create_fingerprint_by_filebuffer($file_buffer, $start_seconds, $audio_len_seconds, $is_db);
+        }
+
+        /**
+          *
+          *  create "ACRCloud Humming Fingerprint" by file buffer of (Audio/Video file)
+          *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
+          *          Video: mp4, mkv, wmv, flv, ts, avi ...
+          *
+          *  @param file_buffer data buffer of input file
+          *  @param file_bufferLen  length of file_buffer
+          *  @param start_seconds skip (start_seconds) seconds from from the beginning of (file_path)
+          *  @param audio_len_seconds Length of audio data you need. if you create recogize frigerprint, default is 12 seconds, if you create db frigerprint, it is not usefully; 
+          *  @param is_db   If it is True, it will create db frigerprint; 
+          *  
+          *  @return result "ACRCloud Humming Fingerprint"
+          *     null: can not create fingerprint
+          *     false: can decode audio from $file_path.
+          *     throw Exception: other error, or params error.
+          *
+          **/
+        public static function createHummingFingerprintByFileBuffer($file_buffer, $start_seconds, $audio_len_seconds) {
+            return acrcloud_create_humming_fingerprint_by_filebuffer($file_buffer, $start_seconds, $audio_len_seconds);
         }
 
         /**
@@ -235,16 +336,16 @@ namespace ACRCloud {
           *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
           *          Video: mp4, mkv, wmv, flv, ts, avi ...
           *
-          *  @param filePath query file path
-          *  @param startTimeSeconds skip (startSeconds) seconds from from the beginning of (filePath)
-          *  @param audioLenSeconds Length of audio data you need, if it is 0, will decode all the audio;  
+          *  @param file_path query file path
+          *  @param start_seconds skip (start_seconds) seconds from from the beginning of (file_path)
+          *  @param audio_len_seconds Length of audio data you need, if it is 0, will decode all the audio;  
           *  
           *  @return result audio data(formatter:RIFF (little-endian) data, WAVE audio, Microsoft PCM, 16 bit, mono 8000 Hz)
-          *      null: can not decode audio from $filePath
+          *      null: can not decode audio from $file_path
           *
           **/
-        public static function decodeAudioByFile($filePath, $startTimeSeconds, $audioLenSeconds) {
-            return acrcloud_decode_audio_by_file($filePath, $startTimeSeconds, $audioLenSeconds);
+        public static function decodeAudioByFile($file_path, $start_seconds, $audio_len_seconds) {
+            return acrcloud_decode_audio_by_file($file_path, $start_seconds, $audio_len_seconds);
         }
 
         /**
@@ -253,23 +354,23 @@ namespace ACRCloud {
           *          Audio: mp3, wav, m4a, flac, aac, amr, ape, ogg ...
           *          Video: mp4, mkv, wmv, flv, ts, avi ...
           *
-          *  @param fileBuffer data buffer of input file
-          *  @param startTimeSeconds skip (startSeconds) seconds from from the beginning of (filePath)
-          *  @param audioLenSeconds Length of audio data you need, if it is 0, will decode all the audio;  
+          *  @param file_buffer data buffer of input file
+          *  @param start_seconds skip (start_seconds) seconds from from the beginning of (file_path)
+          *  @param audio_len_seconds Length of audio data you need, if it is 0, will decode all the audio;  
           *  
           *  @return result audio data(formatter:RIFF (little-endian) data, WAVE audio, Microsoft PCM, 16 bit, mono 8000 Hz)
           *
           **/
-        public static function decodeAudioByFileBuffer($fileBuffer, $startTimeSeconds, $audioLenSeconds) {
-            return acrcloud_decode_audio_by_filebuffer($fileBuffer, $startTimeSeconds, $audioLenSeconds);
+        public static function decodeAudioByFileBuffer($file_buffer, $start_seconds, $audio_len_seconds) {
+            return acrcloud_decode_audio_by_filebuffer($file_buffer, $start_seconds, $audio_len_seconds);
         }
 
-        public static function getDurationFromFile($filePath) {
-            return acrcloud_get_duration_ms_by_file($filePath);
+        public static function getDurationFromFile($file_path) {
+            return acrcloud_get_duration_ms_by_file($file_path);
         }
 
-        public static function setDebug($isDebug) {
-           acrcloud_set_debug_mode($isDebug);
+        public static function setDebug($is_debug) {
+           acrcloud_set_debug_mode($is_debug);
         }
     }
 }
