@@ -24,6 +24,7 @@ x64: [download and install Library(windows/vcredist_x64.exe)](https://www.micros
 1. If you run the SDK on Windows, you must install library(vcredist).
 
 ## Install modules
+**Note: If you use nginx/apache, you can add "phpinfo()" in your code, and find extension dir and the path of "php.ini" from the result info** </br>
 1. Find your extension dir, run(this is default extension dir):   </br>
 ```sh
 $ php -ini | grep "extension_dir"
