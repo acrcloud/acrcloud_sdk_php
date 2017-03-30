@@ -53,22 +53,21 @@ namespace ACRCloud {
           *
           *  @param file_path query file path
           *  @param start_seconds skip (start_seconds) seconds from from the beginning of (file_path)
-          *  @param recognizer_audio_len_seconds use recognizer_audio_len_seconds audio data to recognize
           *  
           *  @return result metainfos https://docs.acrcloud.com/metadata
           *
           **/
-        public function recognizeByFile($file_path, $start_seconds, $recognizer_audio_len_seconds = 10) {
+        public function recognizeByFile($file_path, $start_seconds, $recognizer_audio_len = 10) {
 	    if(!file_exists($file_path)) {
                 return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$GEN_FP_ERROR);
             }
 
             $query_data = array();
             if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_AUDIO || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
-                $query_data['sample'] = ACRCloudExtrTool::createFingerprintByFile($file_path, $start_seconds, $recognizer_audio_len_seconds, False);
+                $query_data['sample'] = ACRCloudExtrTool::createFingerprintByFile($file_path, $start_seconds, $recognizer_audio_len, False);
             }
             if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_HUMMING || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
-                $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprintByFile($file_path, $start_seconds, $recognizer_audio_len_seconds);
+                $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprintByFile($file_path, $start_seconds, $recognizer_audio_len);
             }
 
             return $this->doRecognize($query_data);
@@ -82,18 +81,17 @@ namespace ACRCloud {
          *
          *  @param file_buffer query buffer
          *  @param start_seconds skip (start_seconds) seconds from from the beginning of file_buffer
-         *  @param recognizer_audio_len_seconds use recognizer_audio_len_seconds audio data to recognize
          *  
          *  @return result metainfos https://docs.acrcloud.com/metadata
          *
          **/
-         public function recognizeByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len_seconds = 10) {
+         public function recognizeByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len = 10) {
             $query_data = array();
             if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_AUDIO || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
-                $query_data['sample'] = ACRCloudExtrTool::createFingerprintByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len_seconds, false);
+                $query_data['sample'] = ACRCloudExtrTool::createFingerprintByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len, false);
             }
             if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_HUMMING || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
-                $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprintByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len_seconds);
+                $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprintByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len);
             }
 
             return $this->doRecognize($query_data);
@@ -172,11 +170,17 @@ namespace ACRCloud {
                 curl_setopt($ch, CURLOPT_POSTFIELDS, $post_arrays);
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 $result = curl_exec($ch);
+                $errno = curl_errno($ch);
+                if ($errno == 28) {
+                    return ACRCloudExceptionCode::getCodeResultMsg(ACRCloudExceptionCode::$HTTP_ERROR, "HTTP TIMEOUT");
+                } else if ($errno) {
+                    return ACRCloudExceptionCode::getCodeResultMsg(ACRCloudExceptionCode::$UNKNOW_ERROR, "errno:".$errno);
+                }
                 curl_close($ch);
 
                 try {
                     if (!json_decode($result)) {
-                        return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$JSON_ERROR);
+                        return ACRCloudExceptionCode::getCodeResultMsg(ACRCloudExceptionCode::$JSON_ERROR, $result);
                     }
                 } catch (Exception $e) {
                     return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$JSON_ERROR);
@@ -210,7 +214,7 @@ namespace ACRCloud {
         }
 
         public static function getCodeResultMsg($code, $msg) {
-            $tmp = array('status'=>array('msg'=>$msg, 'code'=>$code, 'version'=>'1.0'));
+            $tmp = array('status'=>array('msg'=>self::$code_msg_map[$code].":".$msg, 'code'=>$code, 'version'=>'1.0'));
             return json_encode($tmp);
         }
 
