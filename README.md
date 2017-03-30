@@ -24,11 +24,16 @@ x64: [download and install Library(windows/vcredist_x64.exe)](https://www.micros
 1. If you run the SDK on Windows, you must install library(vcredist).
 
 ## Install modules
-1. Find your extension dir, run(this is default extension dir):   php -ini | grep "extension_dir" </br> 
-> extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules <br>
+1. Find your extension dir, run(this is default extension dir):   </br>
+```sh
+$ php -ini | grep "extension_dir"
+extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules <br>
+```
 2. Put "acrcloud_extr_tool.so" to /usr/lib64/php/modules;(Your extension dir) </br>
-3. Find your path of php.ini file, run:  php -ini | grep "php.ini" </br>
-> Loaded Configuration File => /etc/php.ini </br>
+3. Find your path of php.ini file:  
+```sh
+$ php -ini | grep "php.ini" 
+Loaded Configuration File => /etc/php.ini
 4. Modify file "/etc/php.ini"(Your php.ini) </br>
 > extension=acrcloud_extr_tool.so </br>
 
