@@ -27,13 +27,14 @@ x64: [download and install Library(windows/vcredist_x64.exe)](https://www.micros
 1. Find your extension dir, run(this is default extension dir):   </br>
 ```sh
 $ php -ini | grep "extension_dir"
-extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules <br>
+extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules
 ```
 2. Put "acrcloud_extr_tool.so" to /usr/lib64/php/modules;(Your extension dir) </br>
 3. Find your path of php.ini file:  
 ```sh
 $ php -ini | grep "php.ini" 
 Loaded Configuration File => /etc/php.ini
+```
 4. Modify file "/etc/php.ini"(Your php.ini) </br>
 > extension=acrcloud_extr_tool.so </br>
 
