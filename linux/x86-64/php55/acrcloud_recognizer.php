@@ -171,12 +171,13 @@ namespace ACRCloud {
                 curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
                 $result = curl_exec($ch);
                 $errno = curl_errno($ch);
+                curl_close($ch);
+
                 if ($errno == 28) {
                     return ACRCloudExceptionCode::getCodeResultMsg(ACRCloudExceptionCode::$HTTP_ERROR, "HTTP TIMEOUT");
                 } else if ($errno) {
                     return ACRCloudExceptionCode::getCodeResultMsg(ACRCloudExceptionCode::$UNKNOW_ERROR, "errno:".$errno);
                 }
-                curl_close($ch);
 
                 try {
                     if (!json_decode($result)) {
