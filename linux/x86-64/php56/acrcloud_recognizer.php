@@ -118,7 +118,7 @@ namespace ACRCloud {
             return $this->doRecognize($query_data, $user_params);
         }
 
-        private function doRecognize($query_data) {
+        private function doRecognize($query_data, $user_params) {
             $http_method = "POST";
             $http_uri = "/v1/identify";
             $data_type = "fingerprint";
