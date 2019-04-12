@@ -163,7 +163,7 @@ namespace ACRCloud {
                     }
                     $post_arrays["sample_hum"] = $query_data["sample_hum"];
                     $sample_hum_bytes = strlen($query_data["sample_hum"]);
-                    $post_arrays["sample_hum_bytes"] = $sample_bytes;
+                    $post_arrays["sample_hum_bytes"] = $sample_hum_bytes;
                 }
                 if ($sample_bytes == 0 && $sample_hum_bytes == 0) {
                     return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$NO_RESULT);

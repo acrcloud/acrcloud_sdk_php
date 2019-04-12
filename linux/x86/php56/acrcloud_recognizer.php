@@ -57,7 +57,7 @@ namespace ACRCloud {
           *  @return result metainfos https://docs.acrcloud.com/metadata
           *
           **/
-        public function recognizeByFile($file_path, $start_seconds, $recognizer_audio_len = 10) {
+        public function recognizeByFile($file_path, $start_seconds, $recognizer_audio_len = 10, $user_params = array()) {
 	    if(!file_exists($file_path)) {
                 return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$GEN_FP_ERROR);
             }
@@ -70,7 +70,7 @@ namespace ACRCloud {
                 $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprintByFile($file_path, $start_seconds, $recognizer_audio_len);
             }
 
-            return $this->doRecognize($query_data);
+            return $this->doRecognize($query_data, $user_params);
         }
 
        /**
@@ -85,7 +85,7 @@ namespace ACRCloud {
          *  @return result metainfos https://docs.acrcloud.com/metadata
          *
          **/
-         public function recognizeByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len = 10) {
+         public function recognizeByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len = 10, $user_params = array()) {
             $query_data = array();
             if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_AUDIO || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
                 $query_data['sample'] = ACRCloudExtrTool::createFingerprintByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len, false);
@@ -94,7 +94,7 @@ namespace ACRCloud {
                 $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprintByFileBuffer($file_buffer, $start_seconds, $recognizer_audio_len);
             }
 
-            return $this->doRecognize($query_data);
+            return $this->doRecognize($query_data, $user_params);
         }
 
         /**
@@ -106,7 +106,7 @@ namespace ACRCloud {
           *  @return result metainfos https://docs.acrcloud.com/metadata
           *
           **/
-        public function recognize($pcm_audio_buffer) {
+        public function recognize($pcm_audio_buffer, $user_params = array()) {
             $query_data = array();
             if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_AUDIO || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
                 $query_data['sample'] = ACRCloudExtrTool::createFingerprint($pcm_audio_buffer, false);
@@ -115,10 +115,10 @@ namespace ACRCloud {
                 $query_data['sample_hum'] = ACRCloudExtrTool::createHummingFingerprint($pcm_audio_buffer);
             }
 
-            return $this->doRecognize($query_data);
+            return $this->doRecognize($query_data, $user_params);
         }
 
-        private function doRecognize($query_data) {
+        private function doRecognize($query_data, $user_params) {
             $http_method = "POST";
             $http_uri = "/v1/identify";
             $data_type = "fingerprint";
@@ -140,6 +140,13 @@ namespace ACRCloud {
                     "signature_version"=>$signature_version, 
                     "timestamp"=>$timestamp
                 );
+
+                if ($user_params) {
+                    foreach ($user_params as $ukey => $uvalue) {
+                        $post_arrays[$ukey] = $uvalue;
+                    }
+                }
+
                 $sample_bytes = 0;
                 $sample_hum_bytes = 0;
                 if (array_key_exists('sample', $query_data)) {
@@ -156,7 +163,7 @@ namespace ACRCloud {
                     }
                     $post_arrays["sample_hum"] = $query_data["sample_hum"];
                     $sample_hum_bytes = strlen($query_data["sample_hum"]);
-                    $post_arrays["sample_hum_bytes"] = $sample_bytes;
+                    $post_arrays["sample_hum_bytes"] = $sample_hum_bytes;
                 }
                 if ($sample_bytes == 0 && $sample_hum_bytes == 0) {
                     return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$NO_RESULT);
