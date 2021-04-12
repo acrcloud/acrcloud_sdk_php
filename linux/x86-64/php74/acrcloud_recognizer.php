@@ -97,6 +97,26 @@ namespace ACRCloud {
             return $this->doRecognize($query_data, $user_params);
         }
 
+       /**
+         *
+         *  recognize by DB fingerprint buffer
+         *
+         *  @param fp_buffer query buffer
+         *  @param start_seconds skip (start_seconds) seconds from from the beginning of file_buffer
+         *  
+         *  @return result metainfos https://docs.acrcloud.com/metadata
+         *
+         **/
+         public function recognizeByFpBuffer($fp_buffer, $start_seconds, $recognizer_audio_len = 10, $user_params = array()) {
+            $query_data = array();
+            if ($this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_AUDIO || $this->recognize_type == ACRCloudRecognizeType::ACR_OPT_REC_BOTH) {
+                $query_data['sample'] = ACRCloudExtrTool::createFingerprintByFpBuffer($fp_buffer, $start_seconds, $recognizer_audio_len);
+            }
+
+            return $this->doRecognize($query_data, $user_params);
+        }
+
+
         /**
           *
           *  recognize by wav audio buffer(RIFF (little-endian) data, WAVE audio, Microsoft PCM, 16 bit, mono 8000 Hz) 
@@ -163,7 +183,7 @@ namespace ACRCloud {
                     }
                     $post_arrays["sample_hum"] = $query_data["sample_hum"];
                     $sample_hum_bytes = strlen($query_data["sample_hum"]);
-                    $post_arrays["sample_hum_bytes"] = $sample_hum_bytes;
+                    $post_arrays["sample_hum_bytes"] = $sample_bytes;
                 }
                 if ($sample_bytes == 0 && $sample_hum_bytes == 0) {
                     return ACRCloudExceptionCode::getCodeResult(ACRCloudExceptionCode::$NO_RESULT);
@@ -179,6 +199,7 @@ namespace ACRCloud {
                 $result = curl_exec($ch);
                 $errno = curl_errno($ch);
                 curl_close($ch);
+echo $result;
 
                 if ($errno == 28) {
                     return ACRCloudExceptionCode::getCodeResultMsg(ACRCloudExceptionCode::$HTTP_ERROR, "HTTP TIMEOUT");
@@ -320,6 +341,10 @@ namespace ACRCloud {
             return acrcloud_create_fingerprint_by_filebuffer($file_buffer, $start_seconds, $audio_len_seconds, $is_db);
         }
 
+        public static function createFingerprintByFpBuffer($fp_buffer, $start_seconds, $audio_len_seconds) {
+            return acrcloud_create_fingerprint_by_fpbuffer($fp_buffer, $start_seconds, $audio_len_seconds);
+        }
+
         /**
           *
           *  create "ACRCloud Humming Fingerprint" by file buffer of (Audio/Video file)
@@ -379,6 +404,10 @@ namespace ACRCloud {
 
         public static function getDurationFromFile($file_path) {
             return acrcloud_get_duration_ms_by_file($file_path);
+        }
+
+        public static function getDurationFromFpBuffer($fp_buffer) {
+            return acrcloud_get_duration_ms_by_fpbuffer($fp_buffer);
         }
 
         public static function setDebug($is_debug) {
