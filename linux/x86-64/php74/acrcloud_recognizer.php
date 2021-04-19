@@ -199,7 +199,6 @@ namespace ACRCloud {
                 $result = curl_exec($ch);
                 $errno = curl_errno($ch);
                 curl_close($ch);
-echo $result;
 
                 if ($errno == 28) {
                     return ACRCloudExceptionCode::getCodeResultMsg(ACRCloudExceptionCode::$HTTP_ERROR, "HTTP TIMEOUT");
