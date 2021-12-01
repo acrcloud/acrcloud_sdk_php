@@ -40,8 +40,8 @@ extension_dir => /usr/lib64/php/modules => /usr/lib64/php/modules
 $ php -ini | grep "php.ini" 
 Loaded Configuration File => /etc/php.ini
 If you use this SDK in Web Server, you need to find "php.ini" by "phpinfo()".
-![image](https://github.com/acrcloud/acrcloud_sdk_php/blob/master/tutorial_images/php.ini.png) <br>
 ```
+![image](https://github.com/acrcloud/acrcloud_sdk_php/blob/master/tutorial_images/php.ini.png) <br>
 4. Modify file "/etc/php.ini"(Your php.ini) </br>
 > extension=acrcloud_extr_tool.so </br>
 
